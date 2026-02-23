@@ -1,0 +1,19 @@
+{
+    "name": "seismic-darkpool-prototype",
+    "version": "0.1.0",
+    "description": "Minimal dark-pool prototype: encrypted orders, server, worker, frontend",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "worker": "node worker.js",
+        "dev": "concurrently \"node server.js\" \"node worker.js\""
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "body-parser": "^1.20.2",
+        "tweetnacl": "^1.0.3",
+        "tweetnacl-util": "^0.15.1",
+        "cors": "^2.8.5",
+        "uuid": "^9.0.0"
+    }
+}
