@@ -8,22 +8,32 @@
 }
 
 :root {
-    --bg: #0d0f14;
-    --surface: #161a24;
-    --surface2: #1e2435;
-    --border: #2a3045;
-    --accent: #f472b6;
-    --accent2: #6ee7b7;
-    --red: #f87171;
-    --text: #e2e8f0;
-    --muted: #7c8aa0;
+    --bg: #f5f1e8;
+    --surface: #ffffff;
+    --surface2: #f0ebe2;
+    --border: #d4cfc5;
+    --accent: #1A1714;
+    --accent2: #1A1714;
+    --red: #ff6b6b;
+    --text: #1a1a1a;
+    --muted: #666666;
     --radius: 14px;
-    --shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+    --shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
 }
 
 body {
     font-family: 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
+    background: #f5f1e8;
+    background-image:
+        radial-gradient(ellipse 600px 400px at 10% 20%, #1A1714 0%, transparent 40%),
+        radial-gradient(ellipse 500px 350px at 90% 10%, #1A1714 0%, transparent 38%),
+        radial-gradient(ellipse 550px 380px at 70% 60%, #1A1714 0%, transparent 42%),
+        radial-gradient(ellipse 480px 420px at 20% 75%, #1A1714 0%, transparent 45%),
+        radial-gradient(ellipse 520px 360px at 85% 80%, #1A1714 0%, transparent 40%),
+        radial-gradient(circle at 50% 35%, #1A1714 0%, transparent 25%),
+        radial-gradient(circle at 55% 50%, #1A1714 0%, transparent 20%),
+        radial-gradient(ellipse 700px 300px at 45% -15%, #1A1714 0%, transparent 50%);
+    background-attachment: fixed;
     color: var(--text);
     min-height: 100vh;
     display: flex;
@@ -40,10 +50,39 @@ header {
     background: var(--surface);
 }
 
-.logo {
-    font-size: 1.2rem;
-    font-weight: 700;
-    letter-spacing: -0.3px;
+.logo-banner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    width: auto;
+    padding: 10px 20px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #1A1714;
+}
+
+.logo-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: none;
+}
+
+.logo-text {
+    position: relative;
+    z-index: 1;
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    font-family: 'Georgia', 'Garamond', serif;
+    color: #f5f1e8;
+    margin-left: 0;
+    text-shadow: none;
 }
 
 /* ── Header right cluster ────────────────────────────────── */
@@ -58,11 +97,11 @@ header {
     align-items: center;
     gap: 6px;
     font-size: 0.75rem;
-    background: rgba(110, 231, 183, 0.1);
+    background: rgba(0, 137, 123, 0.08);
     color: var(--accent2);
     padding: 5px 12px;
     border-radius: 20px;
-    border: 1px solid rgba(110, 231, 183, 0.25);
+    border: 1px solid rgba(0, 137, 123, 0.3);
     font-weight: 600;
 }
 
@@ -109,7 +148,7 @@ header {
     padding: 6px 16px;
     border-radius: 20px;
     border: 1px solid var(--accent);
-    background: rgba(244, 114, 182, 0.12);
+    background: rgba(233, 30, 99, 0.08);
     color: var(--accent);
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
@@ -123,7 +162,7 @@ header {
 
 .btn-wallet.connected {
     border-color: var(--accent2);
-    background: rgba(110, 231, 183, 0.1);
+    background: rgba(0, 137, 123, 0.08);
     color: var(--accent2);
 }
 
@@ -250,12 +289,12 @@ main {
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #e157a0;
+    background: #c2185b;
     transform: translateY(-1px);
 }
 
 .btn-primary:disabled {
-    background: #2a3045;
+    background: #e0e0e0;
     color: var(--muted);
     cursor: not-allowed;
 }
@@ -390,13 +429,13 @@ main {
 }
 
 .compare-col.bad {
-    background: rgba(248, 113, 113, 0.07);
-    border: 1px solid rgba(248, 113, 113, 0.2);
+    background: rgba(211, 47, 47, 0.06);
+    border: 1px solid rgba(211, 47, 47, 0.2);
 }
 
 .compare-col.good {
-    background: rgba(110, 231, 183, 0.07);
-    border: 1px solid rgba(110, 231, 183, 0.2);
+    background: rgba(0, 137, 123, 0.06);
+    border: 1px solid rgba(0, 137, 123, 0.2);
 }
 
 .compare-heading {

@@ -109,7 +109,7 @@ async function setupPolicy() {
         Location : <strong>${city}</strong><br/>
         Threshold : <strong>${threshold.toFixed ? threshold.toFixed(1) : threshold} mm rainfall</strong><br/>
         Payout : <strong>${payout} DEMO RALO tokens</strong><br/>
-        Company : <code style="font-size:0.75rem">${policy.wallet.slice(0, 12)}…</code><br/>
+        User : <code style="font-size:0.75rem">${policy.wallet.slice(0, 12)}…</code><br/>
         Tx (setup) : <code style="font-size:0.75rem">${fakeTxHash().slice(0, 18)}…</code>
     `;
 
