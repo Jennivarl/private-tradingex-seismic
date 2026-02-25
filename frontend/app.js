@@ -159,7 +159,13 @@ async function checkWeather() {
     let apiWorked = false;
 
     try {
-        const resp = await fetch(backendUrl);
+        // Add 8 second timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const resp = await fetch(backendUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (resp.ok) {
             weatherData = await resp.json();
             apiWorked = true;
@@ -240,6 +246,14 @@ async function checkWeather() {
         txBox.style.display = 'block';
         document.getElementById('tx-hash').textContent = fakeTxHash();
         document.getElementById('tx-farmer').textContent = connectedWallet || policy.wallet;
+        document.getElementById('tx-amount').textContent = `${policy.payout} DEMO RALO`;
+        document.getElementById('tx-block').textContent = `#${currentBlock.toLocaleString()}`;
+        document.getElementById('tx-fee').textContent = '0.000021 DEMO RALO';
+    } else {
+        // ── NOT TRIGGERED: show condition not met ────────────
+        statusEl.className = 'payout-status not-met';
+        msgEl.textContent = 'Condition Not Met — No Payout';
+        detailEl.textContent = `Rainfall (${rainfallMm.toFixed(1)} mm) below threshold (${policy.threshold} mm). No funds transferred.`;
     }
 }
 
