@@ -107,16 +107,13 @@ async function setupPolicy() {
     const city = document.getElementById('city').value.trim();
     const threshold = parseFloat(document.getElementById('threshold').value);
     const payout = parseInt(document.getElementById('payout').value);
-    const apiKey = document.getElementById('apiKey').value.trim();
 
     // Basic validation
     if (!city) return alert('Please enter a city name.');
-    if (!apiKey) return alert('Please enter your OpenWeatherMap API key.\n\nGet a free one at: openweathermap.org/api');
     if (isNaN(threshold) || threshold < 0.1) return alert('Rain threshold must be at least 0.1 mm.');
     if (isNaN(payout) || payout < 1) return alert('Enter a valid payout amount.');
     if (payout > 200) return alert('Payout must be at most 200 RALO tokens.');
 
-    setLoading(null, true, null);
     const btn = document.querySelector('#step1 .btn-primary');
     btn.disabled = true;
     btn.innerHTML = '<span class="spin">⟳</span> Deploying contract…';
@@ -125,7 +122,7 @@ async function setupPolicy() {
     await sleep(1800);
 
     // Save policy
-    policy = { city, threshold, payout, apiKey, wallet: fakeWallet(city) };
+    policy = { city, threshold, payout, wallet: fakeWallet(city) };
 
     // Show confirmation
     const out = document.getElementById('step1-output');
