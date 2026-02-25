@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rialo Weather Insurance — Live Demo</title>
-    <link rel="stylesheet" href="style.css?v=12" />
+    <title>PayOnRain — Automated Weather Insurance</title>
+    <link rel="stylesheet" href="style.css?v=25" />
 </head>
 
 <body>
@@ -28,7 +28,7 @@
                 <path class="blob-header"
                     d="M 650 -10 Q 750 5, 820 50 Q 840 90, 810 140 Q 750 170, 680 160 Q 620 150, 630 80 Q 640 20, 650 -10 Z" />
             </svg>
-            <div class="logo-text">Rialo Weather Insurance</div>
+            <div class="logo-text">PayOnRain</div>
         </div>
         <div class="header-right">
             <div class="network-badge">
@@ -38,8 +38,8 @@
             <div class="block-counter">
                 Block <span id="block-num">—</span>
             </div>
-            <button class="btn-wallet" id="walletBtn" onclick="connectWallet()">
-                Connect Wallet
+            <button class="btn-wallet connected" id="walletBtn" disabled>
+                <span id="wallet-display">Connecting…</span>
             </button>
         </div>
     </header>
@@ -55,7 +55,7 @@
 
         <!-- ── STEP 1: Setup Policy ──────────────────────────── -->
         <section class="card" id="step1">
-            <div class="step-label">Step 1 — User Sets Up Policy</div>
+            <div class="step-label">Step 1 — Create Policy & Lock Funds</div>
             <h2>Register Insurance Policy</h2>
 
             <div class="form-row">
@@ -64,19 +64,15 @@
             </div>
             <div class="form-row">
                 <label>Rain Threshold (mm, min 0.1)</label>
-                <input id="threshold" type="number" value="0.1" min="0.1" step="0.1" />
+                <input id="threshold" type="number" value="50" min="0.1" step="0.1" />
             </div>
             <div class="form-row">
                 <label>Payout Amount (DEMO RALO tokens, max 200)</label>
-                <input id="payout" type="number" value="200" min="1" max="200" />
-            </div>
-            <div class="form-row">
-                <label>OpenWeatherMap API Key</label>
-                <input id="apiKey" type="text" placeholder="Paste your free API key here" />
+                <input id="payout" type="number" value="100" min="1" max="200" />
             </div>
 
             <button class="btn-primary" onclick="setupPolicy()">
-                Create Policy &amp; Deposit Funds
+                Create Policy
             </button>
 
             <div class="output" id="step1-output" style="display:none"></div>
@@ -165,7 +161,7 @@
         Built on <strong>Rialo DevNet</strong> · Powered by <strong>Subzero Labs</strong> · rialo.io
     </footer>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=25"></script>
 </body>
 
 </html>

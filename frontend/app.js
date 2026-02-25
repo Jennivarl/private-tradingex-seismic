@@ -12,6 +12,32 @@ let txCount = 1000;       // fake block counter for demo
 let connectedWallet = null;    // set in connectWallet()
 let currentBlock = 8_412_047;  // realistic Rialo DevNet block number
 
+// ── Initialization: Run after DOM is fully ready ─────────────
+document.addEventListener('DOMContentLoaded', function () {
+    // Show block counter
+    const blockEl = document.getElementById('block-num');
+    if (blockEl) {
+        blockEl.textContent = currentBlock.toLocaleString();
+        setInterval(() => {
+            currentBlock += Math.random() < 0.7 ? 1 : 0;
+            blockEl.textContent = currentBlock.toLocaleString();
+        }, 3500);
+    }
+
+    // Auto-connect wallet immediately
+    const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    let addr = '';
+    for (let i = 0; i < 44; i++) {
+        addr += chars[Math.floor(Math.random() * chars.length)];
+    }
+    connectedWallet = addr;
+
+    const display = document.getElementById('wallet-display');
+    if (display) {
+        display.textContent = '✓ ' + addr.slice(0, 5) + '…' + addr.slice(-4);
+    }
+});
+
 // ── Live block counter (ticks up every ~3.5 seconds) ─────────
 function startBlockCounter() {
     const el = document.getElementById('block-num');
