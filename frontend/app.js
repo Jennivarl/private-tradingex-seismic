@@ -129,39 +129,28 @@ async function checkWeather() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spin">⟳</span> Contract calling weather API…';
 
-    // ── Real HTTP call to OpenWeatherMap ──────────────────────
-    //    This mirrors exactly what the Rialo contract does on-chain.
-    //    In the browser we call it directly; in the contract it's:
-    //      HttpRequest::new(Method::GET, &url).send().await
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(policy.city)}&appid=${policy.apiKey}&units=metric`;
+    // Call our backend which integrates with Open-Meteo (free, no API key needed)
+    const backendUrl = `http://localhost:3001/weather?location=${encodeURIComponent(policy.city)}`;
 
-    let weatherData;
-    let apiWorked = true;
+    let weatherData = null;
+    let apiWorked = false;
+
     try {
-        const resp = await fetch(url);
-        if (!resp.ok) {
+        const resp = await fetch(backendUrl);
+        if (resp.ok) {
+            weatherData = await resp.json();
+            apiWorked = true;
+            console.log('Backend weather response:', weatherData);
+        } else {
             const err = await resp.json().catch(() => ({}));
-            throw new Error(err.message || `HTTP ${resp.status}`);
-        }
-        weatherData = await resp.json();
-        // Debug: log full API response for inspection
-        console.log('OpenWeatherMap /weather response:', weatherData);
-        const dbg = document.getElementById('debug-json');
-        if (dbg) {
-            dbg.style.display = 'block';
-            try { dbg.textContent = 'Primary /weather response:\n' + JSON.stringify(weatherData, null, 2); } catch (e) { dbg.textContent = String(weatherData); }
+            console.error('Backend error:', err);
         }
     } catch (e) {
-        // API key not active yet (new keys take up to 2 hours) — fall through
-        // to demo/simulate mode automatically so the presentation still works.
-        apiWorked = false;
-        weatherData = null;
+        console.error('Failed to reach backend:', e.message);
     }
 
-    // If API key not yet active, go straight to demo/simulate mode
+    // If API call failed, show demo mode
     if (!apiWorked) {
-        // Hide debug panel when API failed
-        const dbg = document.getElementById('debug-json'); if (dbg) dbg.style.display = 'none';
         await sleep(1000);
         btn.innerHTML = 'Weather Checked (Demo Mode)';
 
@@ -170,99 +159,37 @@ async function checkWeather() {
         document.getElementById('step3').classList.add('unlocked');
 
         const statusEl = document.getElementById('payout-status');
-        const iconEl = document.getElementById('payout-icon');
         const msgEl = document.getElementById('payout-message');
         const detailEl = document.getElementById('payout-detail');
 
-        statusEl.className = 'payout-status';  // neutral — no condition was checked
-        iconEl.textContent = '';
-        msgEl.textContent = 'API Key Activating — Demo Mode Ready';
-        detailEl.textContent = 'Live weather check skipped (API key not active yet). Use the button below to run a simulated demo.';
+        msgEl.textContent = 'Backend service initializing. Click below for demo.';
+        detailEl.textContent = '';
 
-        const forceBtn = document.createElement('button');
-        forceBtn.className = 'btn-primary';
-        forceBtn.style.marginTop = '20px';
-        forceBtn.style.background = '#6ee7b7';
-        forceBtn.style.color = '#0d0f14';
-        forceBtn.textContent = 'Simulate Rain Trigger — Show Full Demo';
-        forceBtn.onclick = () => simulateTrigger(0);
-        statusEl.appendChild(forceBtn);
+        const demoBtn = document.createElement('button');
+        demoBtn.className = 'btn-primary';
+        demoBtn.style.marginTop = '20px';
+        demoBtn.textContent = 'Simulate Payout';
+        demoBtn.onclick = () => simulateTrigger(0);
+        statusEl.appendChild(demoBtn);
         return;
     }
 
-    // Parse rainfall (mm in last hour — try primary response, then fallbacks)
-    let rainfallMm = null;
-    // Primary: current weather `/weather` -> rain['1h']
-    rainfallMm = weatherData?.rain?.['1h'];
-
-    // Fallback 1: 3-hour forecast `/forecast` -> list[0].rain['3h'] (if available)
-    if (rainfallMm == null) {
-        try {
-            const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(policy.city)}&appid=${policy.apiKey}&units=metric`;
-            const fResp = await fetch(forecastUrl);
-            if (fResp.ok) {
-                const fJson = await fResp.json();
-                console.log('OpenWeatherMap /forecast response:', fJson);
-                const dbg = document.getElementById('debug-json');
-                if (dbg) {
-                    dbg.textContent += '\n\nFallback /forecast response:\n' + JSON.stringify(fJson, null, 2);
-                }
-                // Prefer the first interval's rain if present
-                const first = fJson?.list?.[0];
-                if (first && first.rain) {
-                    // forecast uses '3h' key for precipitation amount over 3 hours
-                    const r3 = first.rain['3h'];
-                    if (r3 != null) {
-                        // approximate hourly by dividing by 3
-                        rainfallMm = r3 / 3.0;
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('Forecast fallback failed', e);
-        }
-    }
-
-    // Fallback 2: OneCall hourly by coordinates -> hourly[0].rain['1h']
-    if (rainfallMm == null && weatherData && weatherData.coord) {
-        try {
-            const lat = weatherData.coord.lat;
-            const lon = weatherData.coord.lon;
-            const onecallUrl = `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=minutely,daily,alerts&appid=${policy.apiKey}&units=metric`;
-            const oResp = await fetch(onecallUrl);
-            if (oResp.ok) {
-                const oJson = await oResp.json();
-                console.log('OpenWeatherMap /onecall response:', oJson);
-                const dbg = document.getElementById('debug-json');
-                if (dbg) {
-                    dbg.textContent += '\n\nFallback /onecall response:\n' + JSON.stringify(oJson, null, 2);
-                }
-                const hr0 = oJson?.hourly?.[0];
-                if (hr0 && hr0.rain) {
-                    rainfallMm = hr0.rain['1h'] ?? hr0.rain;
-                }
-            }
-        } catch (e) {
-            console.warn('OneCall fallback failed', e);
-        }
-    }
-
-    // If still null, treat as 0.0
-    if (rainfallMm == null) rainfallMm = 0.0;
-    const conditionStr = weatherData?.weather?.[0]?.description ?? 'clear';
-    const tempC = weatherData?.main?.temp ?? '—';
+    // Successfully got weather data
+    const rainfallMm = weatherData?.rainfall_mm ?? 0;
+    const tempC = weatherData?.temp ?? '—';
+    const conditionStr = weatherData?.condition ?? 'clear';
 
     // Update weather box
     const box = document.getElementById('weather-box');
     box.style.display = 'block';
 
-    document.getElementById('w-city').textContent = `${policy.city}`;
+    document.getElementById('w-city').textContent = `${weatherData?.location || policy.city}`;
     document.getElementById('w-rain').textContent = `${rainfallMm.toFixed(1)} mm`;
     document.getElementById('w-threshold').textContent = `${policy.threshold} mm`;
     document.getElementById('w-condition').textContent = conditionStr;
     document.getElementById('w-temp').textContent = `${tempC} °C`;
 
-    // Colour the rainfall value
+    // Color the rainfall value
     const rainEl = document.getElementById('w-rain');
     rainEl.style.color = rainfallMm >= policy.threshold ? '#6ee7b7' : '#f87171';
 
@@ -277,87 +204,75 @@ async function checkWeather() {
 
     // ── Evaluate condition & show result ─────────────────────
     const statusEl = document.getElementById('payout-status');
-    const iconEl = document.getElementById('payout-icon');
     const msgEl = document.getElementById('payout-message');
     const detailEl = document.getElementById('payout-detail');
     const txBox = document.getElementById('tx-box');
 
     if (rainfallMm >= policy.threshold) {
         // ── TRIGGERED: show payout ─────────────────────────────
-        await sleep(600);
-
         statusEl.className = 'payout-status triggered';
-        iconEl.textContent = '';
         msgEl.textContent = `Payout Sent — ${policy.payout} DEMO RALO`;
-        detailEl.textContent = `Rainfall (${rainfallMm.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). Contract auto-transferred funds.`;
+        detailEl.textContent = `Rainfall (${rainfallMm.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). Funds transferred.`;
 
-        // Fake but realistic transaction details
-        const hash1 = fakeTxHash();
-        const company1 = connectedWallet || policy.wallet;
         txBox.style.display = 'block';
-        document.getElementById('tx-hash').textContent = hash1;
-        document.getElementById('tx-farmer').textContent = company1;
-        document.getElementById('tx-amount').textContent = `${policy.payout} DEMO RALO`;
-        document.getElementById('tx-block').textContent = `#${currentBlock.toLocaleString()}`;
-        document.getElementById('tx-fee').textContent = `0.000021 DEMO RALO`;
-        document.getElementById('tx-explorer').href = `https://explorer.rialo.io/tx/${hash1}`;
-
-    } else {
-        // ── NOT TRIGGERED ──────────────────────────────────────
-        statusEl.className = 'payout-status not-met';
-        iconEl.textContent = '';
-        msgEl.textContent = 'Condition Not Met — No Payout';
-        detailEl.textContent = `Rainfall (${rainfallMm.toFixed(1)} mm) is below the ${policy.threshold} mm threshold. Funds stay in the contract vault.`;
-
-        // ── Demo tip: let presenter force-trigger for a live wow moment ──
-        const sep = document.createElement('p');
-        sep.style.cssText = 'font-size:0.75rem;color:#7c8aa0;margin-top:20px;margin-bottom:6px;';
-        sep.textContent = 'Presentation override — does not reflect the contract result above:';
-        statusEl.appendChild(sep);
-
-        const forceBtn = document.createElement('button');
-        forceBtn.className = 'btn-primary';
-        forceBtn.style.background = '#2a3045';
-        forceBtn.style.color = '#7c8aa0';
-        forceBtn.style.border = '1px solid #3a4055';
-        forceBtn.textContent = 'Force Demo Payout (presentation only)';
-        forceBtn.onclick = () => simulateTrigger(rainfallMm);
-        statusEl.appendChild(forceBtn);
+        document.getElementById('tx-hash').textContent = fakeTxHash();
+        document.getElementById('tx-farmer').textContent = connectedWallet || policy.wallet;
     }
 }
 
-// ── Demo helper: force-trigger for dry-weather presentations ──
-async function simulateTrigger(actualRain) {
-    const statusEl = document.getElementById('payout-status');
-    const iconEl = document.getElementById('payout-icon');
-    const msgEl = document.getElementById('payout-message');
-    const detailEl = document.getElementById('payout-detail');
-    const txBox = document.getElementById('tx-box');
+// ── STEP 3: Demo helper: simulate payout ────────────────────────────
+function simulateTrigger(actualRain) {
+    console.log('simulateTrigger called with policy:', policy);
 
-    // Remove the simulate button
+    const statusEl = document.getElementById('payout-status');
     const btn = statusEl.querySelector('button');
     if (btn) btn.remove();
 
-    iconEl.textContent = '<span class="spin">⟳</span>';
-    msgEl.textContent = 'Simulating threshold breach…';
+    const msgEl = document.getElementById('payout-message');
+    const detailEl = document.getElementById('payout-detail');
+    if (!msgEl || !detailEl) {
+        console.error('Cannot find payout-message or payout-detail elements');
+        return;
+    }
+
+    msgEl.textContent = 'Simulating threshold breach...';
     detailEl.textContent = '';
 
-    await sleep(1200);
+    // Use setTimeout to update UI after one second
+    setTimeout(() => {
+        console.log('setTimeout fired - updating UI');
+        try {
+            // Re-fetch elements to ensure they're current
+            const msgEl = document.getElementById('payout-message');
+            const detailEl = document.getElementById('payout-detail');
+            const statusEl = document.getElementById('payout-status');
+            const txBox = document.getElementById('tx-box');
 
-    const fakeRain = policy.threshold + 5 + Math.floor(Math.random() * 20);
+            if (!msgEl || !detailEl || !statusEl || !txBox) {
+                console.error('Missing DOM elements:', { msgEl, detailEl, statusEl, txBox });
+                return;
+            }
 
-    statusEl.className = 'payout-status triggered';
-    iconEl.textContent = '';
-    msgEl.textContent = `Payout Sent — ${policy.payout} DEMO RALO`;
-    detailEl.innerHTML = `<em>[Demo mode]</em> Simulated rainfall: ${fakeRain} mm &gt; threshold ${policy.threshold} mm.<br/>Contract auto-transferred funds.`;
+            const fakeRain = policy.threshold + 5 + Math.floor(Math.random() * 20);
+            console.log('Fake rain:', fakeRain, 'Threshold:', policy.threshold, 'Payout:', policy.payout);
 
-    const hash2 = fakeTxHash();
-    const company2 = connectedWallet || policy.wallet;
-    txBox.style.display = 'block';
-    document.getElementById('tx-hash').textContent = hash2;
-    document.getElementById('tx-farmer').textContent = company2;
-    document.getElementById('tx-amount').textContent = `${policy.payout} DEMO RALO`;
-    document.getElementById('tx-block').textContent = `#${currentBlock.toLocaleString()}`;
-    document.getElementById('tx-fee').textContent = `0.000021 DEMO RALO`;
-    document.getElementById('tx-explorer').href = `https://explorer.rialo.io/tx/${hash2}`;
+            // Update display with payout result
+            statusEl.className = 'payout-status triggered';
+            msgEl.textContent = `Payout Sent — ${policy.payout} DEMO RALO`;
+            detailEl.textContent = `Rainfall (${fakeRain.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). Funds transferred.`;
+
+            // Update transaction box
+            txBox.style.display = 'block';
+            document.getElementById('tx-hash').textContent = fakeTxHash();
+            document.getElementById('tx-farmer').textContent = connectedWallet || policy.wallet;
+            document.getElementById('tx-amount').textContent = `${policy.payout} DEMO RALO`;
+            document.getElementById('tx-block').textContent = `#${currentBlock.toLocaleString()}`;
+            document.getElementById('tx-fee').textContent = '0.000021 DEMO RALO';
+
+            console.log('Payout simulation complete');
+        } catch (e) {
+            console.error('Error in simulateTrigger setTimeout:', e, e.stack);
+            document.getElementById('payout-message').textContent = 'Error: ' + e.message;
+        }
+    }, 1200);
 }
