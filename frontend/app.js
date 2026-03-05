@@ -8,71 +8,97 @@
 
 // ── Global state ─────────────────────────────────────────────
 let policy = null;       // set in setupPolicy()
-let txCount = 1000;       // fake block counter for demo
-let connectedWallet = null;    // set in connectWallet()
-let currentBlock = 8_412_047;  // realistic Rialo DevNet block number
+let userEmail = null;    // set in email signup/login
+let userAccount = null;  // { email, id, paymentMethod, accountNumber }
+let currentUser = null;  // authenticated user state
 
 // ── Initialization: Run after DOM is fully ready ─────────────
 document.addEventListener('DOMContentLoaded', function () {
-    // Show block counter
-    const blockEl = document.getElementById('block-num');
-    if (blockEl) {
-        blockEl.textContent = currentBlock.toLocaleString();
-        setInterval(() => {
-            currentBlock += Math.random() < 0.7 ? 1 : 0;
-            blockEl.textContent = currentBlock.toLocaleString();
-        }, 3500);
+    const signInBtn = document.getElementById('signInBtn');
+    if (signInBtn) {
+        signInBtn.addEventListener('click', openSignInModal);
     }
 
-    // Auto-connect wallet immediately
-    const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    let addr = '';
-    for (let i = 0; i < 44; i++) {
-        addr += chars[Math.floor(Math.random() * chars.length)];
-    }
-    connectedWallet = addr;
-
-    const display = document.getElementById('wallet-display');
-    if (display) {
-        display.textContent = '✓ ' + addr.slice(0, 5) + '…' + addr.slice(-4);
-    }
+    // Check if user is already logged in (localStorage)
+    checkAuthStatus();
 });
 
 // ── Live block counter (ticks up every ~3.5 seconds) ─────────
-function startBlockCounter() {
-    const el = document.getElementById('block-num');
-    if (!el) return;
-    el.textContent = currentBlock.toLocaleString();
-    setInterval(() => {
-        currentBlock += Math.random() < 0.7 ? 1 : 0; // occasional skip = realistic
-        el.textContent = currentBlock.toLocaleString();
-    }, 3500);
-}
-startBlockCounter();
-
-// ── Connect Wallet (simulated — no real wallet on DevNet) ─────
-function connectWallet() {
-    const btn = document.getElementById('walletBtn');
-    if (connectedWallet) return; // already connected
-
-    btn.textContent = '⟳ Connecting…';
-    btn.disabled = true;
-
-    // Simulate wallet handshake delay
-    setTimeout(() => {
-        // Generate a realistic-looking Rialo wallet address
-        const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-        let addr = '';
-        for (let i = 0; i < 44; i++) {
-            addr += chars[Math.floor(Math.random() * chars.length)];
+// ── Auth Helpers ────────────────────────────────────────────
+function checkAuthStatus() {
+    const saved = localStorage.getItem('userAccount');
+    if (saved) {
+        try {
+            userAccount = JSON.parse(saved);
+            setAuthUI(userAccount.email);
+        } catch (e) {
+            localStorage.removeItem('userAccount');
         }
-        connectedWallet = addr;
+    }
+}
 
-        // Show shortened address on button
-        btn.textContent = `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-        btn.classList.add('connected');
-        btn.disabled = false;
-    }, 900);
+function setAuthUI(email) {
+    const btn = document.getElementById('signInBtn');
+    if (!btn) return;
+    btn.textContent = `✓ ${email.split('@')[0].slice(0, 8)}…`;
+    btn.classList.add('connected');
+    btn.disabled = false;
+    document.getElementById('step1').classList.remove('locked');
+}
+
+function openSignInModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeSignInModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleEmailSignIn() {
+    const email = document.getElementById('signInEmail').value.trim();
+    const password = document.getElementById('signInPassword').value;
+    const payoutMethod = document.getElementById('payoutMethod').value || 'bank';
+
+    if (!email || !password) {
+        alert('Please enter email and password.');
+        return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Invalid email format.');
+        return;
+    }
+
+    // Mock auth (in production: POST to /auth/login)
+    userAccount = {
+        email: email,
+        id: Math.random().toString(36).slice(2, 11),
+        paymentMethod: payoutMethod,
+        accountNumber: 'demo-***-' + Math.random().toString(36).slice(7, 12),
+        name: email.split('@')[0]
+    };
+
+    localStorage.setItem('userAccount', JSON.stringify(userAccount));
+    setAuthUI(email);
+    closeSignInModal();
+}
+
+function handleLogout() {
+    if (confirm('Sign out?')) {
+        userAccount = null;
+        localStorage.removeItem('userAccount');
+        const btn = document.getElementById('signInBtn');
+        if (btn) {
+            btn.textContent = 'Sign In';
+            btn.classList.remove('connected');
+        }
+        document.getElementById('step1').classList.add('locked');
+        document.getElementById('step2').classList.add('locked');
+        document.getElementById('step3').classList.add('locked');
+        policy = null;
+    }
 }
 
 // ── Utility helpers ───────────────────────────────────────────
@@ -81,16 +107,6 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function fakeTxHash() {
     const hex = () => Math.floor(Math.random() * 16).toString(16);
     return '0x' + Array.from({ length: 64 }, hex).join('');
-}
-
-function fakeWallet(seed) {
-    // Deterministic-looking wallet from the city name
-    const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    let out = '';
-    for (let i = 0; i < 44; i++) {
-        out += chars[(seed.charCodeAt(i % seed.length) + i * 7) % chars.length];
-    }
-    return out;
 }
 
 function setLoading(btnId, loading, defaultText) {
@@ -104,6 +120,8 @@ function setLoading(btnId, loading, defaultText) {
 
 // ── STEP 1: Setup Policy ──────────────────────────────────────
 async function setupPolicy() {
+    if (!userAccount) return alert('Please sign in first.');
+
     const city = document.getElementById('city').value.trim();
     const threshold = parseFloat(document.getElementById('threshold').value);
     const payout = parseInt(document.getElementById('payout').value);
@@ -112,7 +130,7 @@ async function setupPolicy() {
     if (!city) return alert('Please enter a city name.');
     if (isNaN(threshold) || threshold < 0.1) return alert('Rain threshold must be at least 0.1 mm.');
     if (isNaN(payout) || payout < 1) return alert('Enter a valid payout amount.');
-    if (payout > 200) return alert('Payout must be at most 200 RALO tokens.');
+    if (payout > 5000) return alert('Payout must be at most $5,000 USD.');
 
     const btn = document.querySelector('#step1 .btn-primary');
     btn.disabled = true;
@@ -122,18 +140,18 @@ async function setupPolicy() {
     await sleep(1800);
 
     // Save policy
-    policy = { city, threshold, payout, wallet: fakeWallet(city) };
+    policy = { city, threshold, payout, userEmail: userAccount.email, userId: userAccount.id };
 
     // Show confirmation
     const out = document.getElementById('step1-output');
     out.style.display = 'block';
     out.innerHTML = `
-        <strong>Policy created on Rialo DevNet</strong><br/>
+        <strong>Insurance Policy Created</strong><br/>
         Location : <strong>${city}</strong><br/>
         Threshold : <strong>${threshold.toFixed ? threshold.toFixed(1) : threshold} mm rainfall</strong><br/>
-        Payout : <strong>${payout} DEMO RALO tokens</strong><br/>
-        User : <code style="font-size:0.75rem">${policy.wallet.slice(0, 12)}…</code><br/>
-        Tx (setup) : <code style="font-size:0.75rem">${fakeTxHash().slice(0, 18)}…</code>
+        Payout : <strong>$${payout} USD</strong><br/>
+        Account : <code style="font-size:0.75rem">${userAccount.email}</code><br/>
+        Status : <code style="font-size:0.75rem">Active</code>
     `;
 
     btn.innerHTML = 'Policy Created';
@@ -197,8 +215,8 @@ async function checkWeather() {
         const demoBtn = document.createElement('button');
         demoBtn.className = 'btn-primary';
         demoBtn.style.marginTop = '20px';
-        demoBtn.textContent = 'Simulate Payout';
-        demoBtn.onclick = () => simulateTrigger(0);
+        demoBtn.textContent = 'Try Demo Payout';
+        demoBtn.onclick = () => simulateDemoTrigger(rainfallMm);
         statusEl.appendChild(demoBtn);
         return;
     }
@@ -236,19 +254,70 @@ async function checkWeather() {
     const msgEl = document.getElementById('payout-message');
     const detailEl = document.getElementById('payout-detail');
     const txBox = document.getElementById('tx-box');
+    const txExplorer = document.getElementById('tx-explorer');
 
     if (rainfallMm >= policy.threshold) {
-        // ── TRIGGERED: show payout ─────────────────────────────
+        // ── TRIGGERED: request payout from backend ──────────────
         statusEl.className = 'payout-status triggered';
-        msgEl.textContent = `Payout Sent — ${policy.payout} DEMO RALO`;
-        detailEl.textContent = `Rainfall (${rainfallMm.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). Funds transferred.`;
+        msgEl.textContent = 'Processing payout...';
+        detailEl.textContent = '';
 
-        txBox.style.display = 'block';
-        document.getElementById('tx-hash').textContent = fakeTxHash();
-        document.getElementById('tx-farmer').textContent = connectedWallet || policy.wallet;
-        document.getElementById('tx-amount').textContent = `${policy.payout} DEMO RALO`;
-        document.getElementById('tx-block').textContent = `#${currentBlock.toLocaleString()}`;
-        document.getElementById('tx-fee').textContent = '0.000021 DEMO RALO';
+        try {
+            const payoutResp = await fetch('http://localhost:3001/payout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userEmail: userAccount.email,
+                    userId: userAccount.id,
+                    paymentMethod: userAccount.paymentMethod,
+                    amount: policy.payout,
+                    city: policy.city,
+                    threshold: policy.threshold,
+                    rainfall: rainfallMm
+                })
+            });
+
+            if (!payoutResp.ok) {
+                throw new Error(`Backend error: ${payoutResp.status}`);
+            }
+
+            const payoutData = await payoutResp.json();
+
+            if (payoutData.success) {
+                // Display payout success
+                msgEl.textContent = `Payout Confirmed — $${payoutData.amount} USD`;
+                detailEl.textContent = `Rainfall (${rainfallMm.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). Your payout has been sent to ${payoutData.payoutMethod}.`;
+
+                txBox.style.display = 'block';
+                document.getElementById('tx-hash').textContent = payoutData.transactionId || 'TXN-' + Math.random().toString(36).slice(7);
+                document.getElementById('tx-farmer').textContent = userAccount.email;
+                document.getElementById('tx-amount').textContent = `$${payoutData.amount} USD`;
+                document.getElementById('tx-block').textContent = payoutData.payoutMethod;
+                document.getElementById('tx-fee').textContent = 'Standard processing';
+
+                // Add confirmation link
+                if (txExplorer) {
+                    txExplorer.href = '#';
+                    txExplorer.textContent = 'View Confirmation Email ↗';
+                    txExplorer.style.display = 'block';
+                }
+            } else {
+                msgEl.textContent = 'Payout Request Failed';
+                detailEl.textContent = payoutData.error || 'Unknown error from backend';
+            }
+        } catch (e) {
+            console.error('Payout request error:', e);
+            msgEl.textContent = 'Payout Not Available';
+            detailEl.textContent = 'Backend payout service offline. Running in demo mode.';
+
+            // Fallback to demo simulation
+            const demoBtn = document.createElement('button');
+            demoBtn.className = 'btn-primary';
+            demoBtn.style.marginTop = '20px';
+            demoBtn.textContent = 'View Demo Simulation';
+            demoBtn.onclick = () => simulateDemoTrigger(rainfallMm);
+            statusEl.appendChild(demoBtn);
+        }
     } else {
         // ── NOT TRIGGERED: show condition not met ────────────
         statusEl.className = 'payout-status not-met';
@@ -258,8 +327,8 @@ async function checkWeather() {
 }
 
 // ── STEP 3: Demo helper: simulate payout ────────────────────────────
-function simulateTrigger(actualRain) {
-    console.log('simulateTrigger called with policy:', policy);
+function simulateDemoTrigger(actualRain) {
+    console.log('simulateDemoTrigger called with policy:', policy);
 
     const statusEl = document.getElementById('payout-status');
     const btn = statusEl.querySelector('button');
@@ -284,6 +353,7 @@ function simulateTrigger(actualRain) {
             const detailEl = document.getElementById('payout-detail');
             const statusEl = document.getElementById('payout-status');
             const txBox = document.getElementById('tx-box');
+            const txExplorer = document.getElementById('tx-explorer');
 
             if (!msgEl || !detailEl || !statusEl || !txBox) {
                 console.error('Missing DOM elements:', { msgEl, detailEl, statusEl, txBox });
@@ -293,22 +363,35 @@ function simulateTrigger(actualRain) {
             const fakeRain = policy.threshold + 5 + Math.floor(Math.random() * 20);
             console.log('Fake rain:', fakeRain, 'Threshold:', policy.threshold, 'Payout:', policy.payout);
 
+            // Generate demo tx signature (base58 format, realistic length)
+            const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+            let demoTxHash = '';
+            for (let i = 0; i < 88; i++) {
+                demoTxHash += chars[Math.floor(Math.random() * chars.length)];
+            }
+
             // Update display with payout result
             statusEl.className = 'payout-status triggered';
-            msgEl.textContent = `Payout Sent — ${policy.payout} DEMO RALO`;
-            detailEl.textContent = `Rainfall (${fakeRain.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). Funds transferred.`;
+            msgEl.textContent = `Payout Confirmed — $${policy.payout} USD`;
+            detailEl.textContent = `Demo: Rainfall (${fakeRain.toFixed(1)} mm) exceeded threshold (${policy.threshold} mm). This is a simulation—no real funds transferred.`;
 
             // Update transaction box
             txBox.style.display = 'block';
-            document.getElementById('tx-hash').textContent = fakeTxHash();
-            document.getElementById('tx-farmer').textContent = connectedWallet || policy.wallet;
-            document.getElementById('tx-amount').textContent = `${policy.payout} DEMO RALO`;
-            document.getElementById('tx-block').textContent = `#${currentBlock.toLocaleString()}`;
-            document.getElementById('tx-fee').textContent = '0.000021 DEMO RALO';
+            document.getElementById('tx-hash').textContent = 'DEMO-' + demoTxHash.slice(0, 16);
+            document.getElementById('tx-farmer').textContent = userAccount.email;
+            document.getElementById('tx-amount').textContent = `$${policy.payout} USD`;
+            document.getElementById('tx-block').textContent = 'Bank Account';
+            document.getElementById('tx-fee').textContent = 'Free';
+
+            if (txExplorer) {
+                txExplorer.href = '#';
+                txExplorer.textContent = 'Demo - No Link';
+                txExplorer.style.display = 'block';
+            }
 
             console.log('Payout simulation complete');
         } catch (e) {
-            console.error('Error in simulateTrigger setTimeout:', e, e.stack);
+            console.error('Error in simulateDemoTrigger setTimeout:', e, e.stack);
             document.getElementById('payout-message').textContent = 'Error: ' + e.message;
         }
     }, 1200);

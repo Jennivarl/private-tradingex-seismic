@@ -13,50 +13,94 @@
     <!-- ── Header ──────────────────────────────────────────── -->
     <header>
         <div class="logo-banner">
-            <svg viewBox="0 0 800 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"
-                class="logo-bg">
-                <defs>
-                    <style>
-                        .blob-header {
-                            fill: #1A1714;
-                        }
-                    </style>
-                </defs>
-                <rect width="800" height="180" fill="#f5f1e8" />
-                <path class="blob-header"
-                    d="M -50 20 Q 50 -10, 150 15 Q 200 40, 180 100 Q 150 140, 80 150 Q 20 155, -20 130 Q -60 100, -50 20 Z" />
-                <path class="blob-header"
-                    d="M 650 -10 Q 750 5, 820 50 Q 840 90, 810 140 Q 750 170, 680 160 Q 620 150, 630 80 Q 640 20, 650 -10 Z" />
-            </svg>
-            <div class="logo-text">PayOnRain</div>
+            <div class="logo-content">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 28px;">☁️</span>
+                    <div class="logo-text">PayOnRain</div>
+                </div>
+                <div class="logo-subtitle">BY RIALO</div>
+            </div>
         </div>
         <div class="header-right">
-            <div class="network-badge">
-                <span class="net-dot"></span>
-                Rialo DevNet
-            </div>
-            <div class="block-counter">
-                Block <span id="block-num">—</span>
-            </div>
-            <button class="btn-wallet connected" id="walletBtn" disabled>
-                <span id="wallet-display">Connecting…</span>
+            <button class="btn-wallet" id="signInBtn" onclick="openSignInModal()">
+                Sign In
             </button>
         </div>
     </header>
 
+    <!-- ── Auth Modal ──────────────────────────────────────── -->
+    <div id="authModal" class="auth-modal" style="display:none">
+        <div class="auth-modal-content">
+            <div class="auth-modal-header">
+                <div class="auth-modal-header-content">
+                    <div class="auth-modal-header-left">
+                        <div class="auth-modal-icon">☁️</div>
+                        <div>
+                            <h2>Welcome Back</h2>
+                            <p>Sign in to manage your weather insurance</p>
+                        </div>
+                    </div>
+                    <button class="btn-close" onclick="closeSignInModal()">✕</button>
+                </div>
+            </div>
+            <div class="auth-modal-body">
+                <div class="form-row">
+                    <label>Email Address</label>
+                    <input id="signInEmail" type="email" placeholder="user@example.com" />
+                </div>
+                <div class="form-row">
+                    <label>Password</label>
+                    <input id="signInPassword" type="password" placeholder="••••••••" />
+                </div>
+                <div class="form-row">
+                    <label>Preferred Payout Method</label>
+                    <select id="payoutMethod">
+                        <option value="bank">💳 Bank Account (ACH/Wire)</option>
+                        <option value="paypal">🅿️ PayPal</option>
+                        <option value="bitcoin">₿ Bitcoin</option>
+                        <option value="usdc">💵 USDC Stablecoin</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="handleEmailSignIn()">
+                    Sign In
+                </button>
+            </div>
+            <div class="auth-modal-footer">
+                <p style="font-size:12px; color:#999;">Demo: Any email/password works</p>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Main ────────────────────────────────────────────── -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">⛈️ Weather Insurance Made Simple</div>
+            <h1>Get Paid When It <span class="accent">Rains</span></h1>
+            <p>Protect your business from unpredictable weather. Set your threshold, and get automatic payouts when
+                conditions are met.</p>
+            <button class="hero-btn" onclick="openSignInModal()">Get Started Free</button>
+        </div>
+    </section>
+
     <main>
 
         <!-- Key pitch line -->
         <p class="tagline">
-            On any other chain: oracle + keeper + relay.<br />
-            On Rialo: <strong>one HTTP call inside the contract.</strong>
+            Automatic payouts when weather conditions are met.<br />
+            <strong>No claims. No waiting. Instant settlements.</strong>
         </p>
 
         <!-- ── STEP 1: Setup Policy ──────────────────────────── -->
-        <section class="card" id="step1">
-            <div class="step-label">Step 1 — Create Policy & Lock Funds</div>
-            <h2>Register Insurance Policy</h2>
+        <section class="card locked" id="step1">
+            <div class="card-header">
+                <div class="step-icon">🌧️</div>
+                <div>
+                    <div class="step-label">Step 1</div>
+                    <h2>Create Your Policy</h2>
+                </div>
+            </div>
+            <p style="color: #999; margin-bottom: 24px; margin-top: 0;">Set your coverage parameters and get instant
+                protection.</p>
 
             <div class="form-row">
                 <label>City / Location</label>
@@ -67,8 +111,8 @@
                 <input id="threshold" type="number" value="50" min="0.1" step="0.1" />
             </div>
             <div class="form-row">
-                <label>Payout Amount (DEMO RALO tokens, max 200)</label>
-                <input id="payout" type="number" value="100" min="1" max="200" />
+                <label>Payout Amount (USD, max $5,000)</label>
+                <input id="payout" type="number" value="500" min="1" max="5000" />
             </div>
 
             <button class="btn-primary" onclick="setupPolicy()">
@@ -80,15 +124,18 @@
 
         <!-- ── STEP 2: Check Weather ─────────────────────────── -->
         <section class="card locked" id="step2">
-            <div class="step-label">Step 2 — Contract Calls Weather API</div>
-            <h2>Trigger Weather Check</h2>
-            <p class="hint">
-                The contract makes a live HTTPS call to OpenWeatherMap.
-                No oracle. No external bot. Just the contract itself.
-            </p>
+            <div class="card-header">
+                <div class="step-icon">📈</div>
+                <div>
+                    <div class="step-label">Step 2</div>
+                    <h2>Check Weather</h2>
+                </div>
+            </div>
+            <p style="color: #999; margin-bottom: 24px; margin-top: 0;">We'll check real-time weather data. If
+                conditions are met, payout processes immediately.</p>
 
             <button class="btn-primary" onclick="checkWeather()" id="checkBtn" disabled>
-                Check Live Weather &amp; Evaluate
+                Check Weather Now
             </button>
 
             <div class="weather-box" id="weather-box" style="display:none">
@@ -104,53 +151,29 @@
 
         <!-- ── STEP 3: Payout ────────────────────────────────── -->
         <section class="card locked" id="step3">
-            <div class="step-label">Step 3 — Automatic Payout</div>
-            <h2>Result</h2>
+            <div class="card-header">
+                <div class="step-icon">✅</div>
+                <div>
+                    <div class="step-label">Step 3</div>
+                    <h2>Your Settlement</h2>
+                </div>
+            </div>
 
             <div class="payout-status" id="payout-status">
                 <div id="payout-icon"></div>
-                <div id="payout-message">Waiting for weather check…</div>
+                <div id="payout-message">Waiting for evaluation…</div>
                 <div id="payout-detail"></div>
             </div>
 
             <div class="tx-box" id="tx-box" style="display:none">
-                <div class="tx-row"><span>Tx Hash</span><span id="tx-hash" class="mono">—</span></div>
-                <div class="tx-row"><span>Company Wallet</span><span id="tx-farmer" class="mono">—</span></div>
-                <div class="tx-row"><span>Amount Sent</span><span id="tx-amount">—</span></div>
-                <div class="tx-row"><span>Block</span><span id="tx-block">—</span></div>
-                <div class="tx-row"><span>Fee</span><span id="tx-fee">—</span></div>
+                <div class="tx-row"><span>Transaction ID</span><span id="tx-hash" class="mono">—</span></div>
+                <div class="tx-row"><span>Recipient Email</span><span id="tx-farmer" class="mono">—</span></div>
+                <div class="tx-row"><span>Amount</span><span id="tx-amount">—</span></div>
+                <div class="tx-row"><span>Payout Method</span><span id="tx-block">—</span></div>
+                <div class="tx-row"><span>Processing Fee</span><span id="tx-fee">—</span></div>
                 <div class="tx-row">
-                    <span>Explorer</span>
-                    <a id="tx-explorer" class="explorer-link" href="#" target="_blank">View on Rialo Explorer ↗</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- ── How it works ──────────────────────────────────── -->
-        <section class="explainer">
-            <h3>How this works on Rialo vs. other chains</h3>
-            <div class="compare-grid">
-                <div class="compare-col bad">
-                    <div class="compare-heading">Other Blockchains</div>
-                    <ul>
-                        <li>Deploy oracle smart contract</li>
-                        <li>Set up Chainlink node / data feed</li>
-                        <li>Build a keeper / cron bot off-chain</li>
-                        <li>Write relay + aggregation logic</li>
-                        <li>Pay oracle fees every check</li>
-                        <li>Hope nothing goes out of sync</li>
-                    </ul>
-                </div>
-                <div class="compare-col good">
-                    <div class="compare-heading">Rialo</div>
-                    <ul>
-                        <li>Write one async HTTP call in the contract</li>
-                        <li>Set a condition</li>
-                        <li>Transfer tokens if true</li>
-                        <li class="spacer"> </li>
-                        <li class="spacer"> </li>
-                        <li class="spacer"> </li>
-                    </ul>
+                    <span>Confirmation</span>
+                    <a id="tx-explorer" class="explorer-link" href="#" target="_blank">View Email Confirmation ↗</a>
                 </div>
             </div>
         </section>
@@ -158,7 +181,7 @@
     </main>
 
     <footer>
-        Built on <strong>Rialo DevNet</strong> · Powered by <strong>Subzero Labs</strong> · rialo.io
+        PayOnRain — Parametric Weather Insurance · Powered by Subzero Labs · payonrain.io
     </footer>
 
     <script src="app.js?v=27"></script>
